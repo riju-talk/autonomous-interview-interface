@@ -2,25 +2,37 @@ version: '3.8'
 
 services:
   # Backend API Service
-  backend:
+  api:
     build:
-      context: .
-      target: backend
-    container_name: interview-ai-backend
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: excel-interviewer-api
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/interview_ai
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_SERVER=http://chroma:8000
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-me}
+      - TTS_PROVIDER=local
+      - UPLOAD_DIR=/app/uploads
     ports:
       - "8000:8000"
     depends_on:
-      - db
-      - redis
-      - mlflow
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chroma:
+        condition: service_healthy
     volumes:
-      - ./backend:/app/backend
-      - uploads:/app/backend/data/uploads
+      - ./apps/api/app:/app/app
+      - ./apps/api/uploads:/app/uploads
+      - chroma_data:/app/chroma_data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -28,85 +40,98 @@ services:
       retries: 3
       start_period: 40s
 
-  # Frontend Service
-  frontend:
-    build:
-      context: .
-      target: frontend
-    container_name: interview-ai-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # Frontend Service (to be implemented later)
+  # frontend:
+  #   build:
+  #     context: ./apps/web
+  #     dockerfile: Dockerfile
+  #   container_name: excel-interviewer-web
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://api:8000
+  #   depends_on:
+  #     - api
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
 
   # Database Service (PostgreSQL)
   db:
     image: postgres:15-alpine
-    container_name: interview-ai-db
+    container_name: excel-interviewer-db
     restart: unless-stopped
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=interview_ai
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C.UTF-8 --lc-ctype=C.UTF-8
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d interview_ai"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Redis Service for caching
+  # Redis Service for caching and session management
   redis:
     image: redis:7-alpine
-    container_name: interview-ai-redis
+    container_name: excel-interviewer-redis
     restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-your-redis-password}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-your-redis-password}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # MLflow Service for experiment tracking
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:latest
-    container_name: interview-ai-mlflow
+  # ChromaDB Service for vector storage
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: excel-interviewer-chroma
     restart: unless-stopped
     environment:
-      - BACKEND_URI=postgresql://postgres:postgres@db:5432/mlflow
-      - ARTIFACT_ROOT=/mlruns
-    ports:
-      - "5000:5000"
-    depends_on:
-      - db
+      - CHROMA_SERVER_AUTH_CREDENTIALS=admin:${CHROMA_ADMIN_PASSWORD:-admin}
+      - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.token_authn.TokenAuthServerProvider
+      - CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token_authn.TokenAuthServerProvider
+      - CHROMA_SERVER_AUTH_CREDENTIALS_FILE=/chroma/chroma_users.htpasswd
     volumes:
-      - mlruns:/mlruns
+      - chroma_data:/chroma/chroma
+      - ./scripts/init-chroma.sh:/chroma/init-chroma.sh
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: /chroma/init-chroma.sh
 
   # PgAdmin (Optional, for database management)
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: interview-ai-pgadmin
+    container_name: excel-interviewer-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - db
 
@@ -114,5 +139,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  mlruns:
+  chroma_data:
+  pgadmin_data:
   uploads:

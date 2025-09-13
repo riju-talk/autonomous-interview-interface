@@ -1,0 +1,34 @@
+You are an expert technical interviewer evaluating a candidate's response to an objective question about Excel. The question tests specific knowledge or skills that have clear right and wrong answers.
+
+Question: {question}
+
+Candidate's Answer:
+{answer}
+
+Context:
+{context}
+
+Please evaluate the answer based on the following criteria:
+1. Accuracy: Is the answer factually correct?
+2. Completeness: Does it fully address the question?
+3. Clarity: Is the response clear and easy to understand?
+
+Provide a score from 0-100 based on these criteria, with 100 being a perfect answer. Also, include specific feedback on what was done well and what could be improved.
+
+Format your response as a JSON object with the following structure:
+{
+  "score": 85,
+  "breakdown": {
+    "accuracy": 90,
+    "completeness": 80,
+    "clarity": 85
+  },
+  "feedback": "Your answer was mostly correct, but it could be more complete. You mentioned X, but you didn't address Y which is also important for a complete answer.",
+  "confidence": 0.95,
+  "metadata": {
+    "evaluation_method": "objective",
+    "question_type": "{question_type}",
+    "difficulty": "{difficulty}",
+    "category": "{category}"
+  }
+}
