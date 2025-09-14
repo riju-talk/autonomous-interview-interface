@@ -1,6 +1,7 @@
-modules = ["nodejs-18", "python-3.12", "web"]
+modules = ["nodejs-18", "web", "python-3.11"]
 [agent]
 expertMode = true
 
 [nix]
 channel = "stable-25_05"
+packages = ["bash", "file", "glibcLocales", "libxcrypt", "postgresql"]
