@@ -16,9 +16,10 @@ export default defineConfig(({ mode }) => {
     // Development server configuration
     server: {
       host: '0.0.0.0',
-      port: 3000,
+      port: 5000,
       strictPort: true,
       open: mode === 'development',
+      allowedHosts: 'all',
       proxy: {
         '/api': {
           target: env.VITE_API_BASE_URL || 'http://localhost:8000',
