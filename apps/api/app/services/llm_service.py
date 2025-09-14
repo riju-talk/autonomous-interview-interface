@@ -2,127 +2,147 @@ import logging
 from typing import Dict, Any, List, Optional
 import json
 import time
+import os
 from pathlib import Path
 
-import groq
-from groq import Groq
-from pydantic import BaseModel, Field, validator
+from openai import OpenAI
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
-from app.services.chroma_service import chroma_service
 
 logger = logging.getLogger(__name__)
 
 class EvaluationResult(BaseModel):
     """Schema for LLM evaluation results."""
     score: float = Field(..., ge=0, le=100, description="Overall score (0-100)")
-    breakdown: Dict[str, float] = Field(
-        ...,
-        description="Score breakdown by evaluation criteria"
-    )
+    is_correct: bool = Field(..., description="Whether the answer is fundamentally correct")
     feedback: str = Field(..., description="Detailed feedback on the answer")
+    reasoning: str = Field(..., description="Reasoning behind the evaluation")
+    follow_up_suggestions: List[str] = Field(
+        default_factory=list,
+        description="Suggestions for follow-up questions"
+    )
+    time_assessment: str = Field(
+        default="unknown",
+        description="Assessment of response time (too_fast, appropriate, too_slow)"
+    )
     confidence: float = Field(
         ...,
         ge=0,
         le=1,
         description="Confidence score of the evaluation (0-1)"
     )
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional metadata about the evaluation"
-    )
 
 class LLMService:
-    """Service for interacting with the LLM (ChatGroq)."""
+    """Service for AI-powered Excel interview evaluation using OpenAI."""
     
     def __init__(self):
+        # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
+        # do not change this unless explicitly requested by the user
         self.client = None
-        self.model = "mixtral-8x7b-32768"  # Default model
-        self.temperature = 0.1
+        self.model = "gpt-5"
+        self.temperature = 0.3
         self.max_tokens = 1024
         self._initialize_client()
-        
-        # Load prompts
-        self.prompts = self._load_prompts()
     
     def _initialize_client(self):
-        """Initialize the Groq client."""
-        if not settings.GROQ_API_KEY:
+        """Initialize the OpenAI client."""
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
             logger.warning(
-                "GROQ_API_KEY not set. LLM functionality will be limited. "
+                "OPENAI_API_KEY not set. LLM functionality will be limited. "
                 "Using mock responses."
             )
             return
             
         try:
-            self.client = Groq(api_key=settings.GROQ_API_KEY)
-            logger.info("Successfully initialized Groq client")
+            self.client = OpenAI(api_key=api_key)
+            logger.info("Successfully initialized OpenAI client")
         except Exception as e:
-            logger.error(f"Failed to initialize Groq client: {e}")
+            logger.error(f"Failed to initialize OpenAI client: {e}")
             raise
     
-    def _load_prompts(self) -> Dict[str, str]:
-        """Load prompt templates from the prompts directory."""
-        prompts_dir = Path(__file__).parent.parent / "prompts"
-        prompts = {}
+    def _assess_response_time(self, processing_time: Optional[float], difficulty: str) -> str:
+        """Assess if response time is appropriate for the question difficulty."""
+        if not processing_time:
+            return "unknown"
         
-        if not prompts_dir.exists():
-            logger.warning(f"Prompts directory not found: {prompts_dir}")
-            return prompts
-            
-        for prompt_file in prompts_dir.glob("*.txt"):
-            with open(prompt_file, "r", encoding="utf-8") as f:
-                prompts[prompt_file.stem] = f.read()
-                
-        return prompts
+        # Expected time ranges by difficulty (in seconds)
+        time_ranges = {
+            "easy": (30, 120),
+            "medium": (60, 300),
+            "hard": (180, 600)
+        }
+        
+        min_time, max_time = time_ranges.get(difficulty.lower(), (60, 300))
+        
+        if processing_time < min_time * 0.5:
+            return "too_fast"
+        elif processing_time > max_time * 1.5:
+            return "too_slow"
+        else:
+            return "appropriate"
     
     async def evaluate_response(
         self,
         question: Any,
-        answer: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
+        answer: str,
+        context: Optional[Dict[str, Any]] = None,
+        processing_time: Optional[float] = None
     ) -> EvaluationResult:
         """
-        Evaluate a candidate's response to an interview question.
+        Evaluate a candidate's response to an Excel interview question.
         
         Args:
             question: The question being answered
-            answer: The candidate's answer
+            answer: The candidate's answer (string)
             context: Additional context about the interview
+            processing_time: Time taken to answer (in seconds)
             
         Returns:
             EvaluationResult with score and feedback
         """
         if not self.client:
-            return self._mock_evaluation(question, answer, context)
+            return self._mock_evaluation(question, answer, context, processing_time)
         
         try:
-            # Get the appropriate prompt template based on question type
-            prompt_template = self.prompts.get(
-                f"evaluation_{question.question_type}",
-                self.prompts.get("evaluation_default")
-            )
+            time_assessment = self._assess_response_time(processing_time, getattr(question, 'difficulty', 'medium'))
             
-            if not prompt_template:
-                raise ValueError(
-                    f"No prompt template found for question type: {question.question_type}"
-                )
+            # Build Excel-specific evaluation prompt
+            prompt = f"""You are an expert Excel interviewer evaluating a candidate's response to a technical Excel question.
+
+Question: {getattr(question, 'prompt', getattr(question, 'text', str(question)))}
+Category: {getattr(question, 'category', 'Excel')}
+Difficulty: {getattr(question, 'difficulty', 'medium')}
+Question Type: {getattr(question, 'question_type', 'objective')}
+Expected Answer: {json.dumps(getattr(question, 'correct_answer', None)) if hasattr(question, 'correct_answer') else "N/A"}
+Explanation: {getattr(question, 'explanation', 'N/A')}
+
+Candidate's Answer: {answer}
+Response Time: {f"{processing_time:.1f} seconds ({time_assessment})" if processing_time else "Not recorded"}
+
+Please evaluate this response and provide:
+1. A score from 0-100 based on accuracy and completeness
+2. Whether the answer is fundamentally correct
+3. Detailed feedback on what was good and what could be improved
+4. Your reasoning for the score
+5. 2-3 follow-up questions or suggestions to test deeper understanding
+6. Your confidence in the evaluation (0-1)
+
+Focus on:
+- Technical accuracy of Excel formulas, functions, or concepts
+- Completeness of the answer
+- Understanding of underlying Excel principles
+- Practical applicability
+
+Respond in JSON format with these exact keys: score, is_correct, feedback, reasoning, follow_up_suggestions, confidence"""
             
-            # Format the prompt with question and answer
-            prompt = prompt_template.format(
-                question=question.text,
-                answer=json.dumps(answer, indent=2),
-                context=json.dumps(context or {}, indent=2),
-                **question.dict()
-            )
-            
-            # Call the LLM
+            # Call OpenAI
             response = self.client.chat.completions.create(
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an expert technical interviewer evaluating candidate responses. "
-                                  "Provide a detailed evaluation with a numerical score and feedback."
+                        "content": "You are an expert Excel interviewer. Evaluate responses fairly but thoroughly, considering both technical accuracy and practical understanding."
                     },
                     {
                         "role": "user",
@@ -138,132 +158,92 @@ class LLMService:
             # Parse the response
             try:
                 result_data = json.loads(response.choices[0].message.content)
-                return EvaluationResult(**result_data)
+                return EvaluationResult(
+                    score=max(0, min(100, float(result_data.get("score", 0)))),
+                    is_correct=bool(result_data.get("is_correct", False)),
+                    feedback=result_data.get("feedback", "No feedback provided"),
+                    reasoning=result_data.get("reasoning", "No reasoning provided"),
+                    follow_up_suggestions=result_data.get("follow_up_suggestions", []),
+                    time_assessment=time_assessment,
+                    confidence=max(0, min(1, float(result_data.get("confidence", 0.5))))
+                )
             except (json.JSONDecodeError, ValueError) as e:
                 logger.error(f"Failed to parse LLM response: {e}")
-                raise ValueError("Invalid response format from LLM") from e
+                return self._mock_evaluation(question, answer, context, processing_time)
                 
         except Exception as e:
             logger.error(f"Error evaluating response: {e}")
             # Fall back to mock evaluation on error
-            return self._mock_evaluation(question, answer, context)
+            return self._mock_evaluation(question, answer, context, processing_time)
     
     def _mock_evaluation(
         self,
         question: Any,
-        answer: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
+        answer: str,
+        context: Optional[Dict[str, Any]] = None,
+        processing_time: Optional[float] = None
     ) -> EvaluationResult:
         """Generate a mock evaluation for testing or when LLM is not available."""
         logger.warning("Using mock evaluation (LLM not available)")
         
         # Simple mock logic - in a real app, this would be more sophisticated
         score = 75.0  # Base score
-        feedback = "This is a mock evaluation. Enable the LLM service for real feedback."
+        time_assessment = self._assess_response_time(processing_time, getattr(question, 'difficulty', 'medium'))
         
         return EvaluationResult(
             score=score,
-            breakdown={
-                "relevance": score * 0.9,
-                "accuracy": score * 0.8,
-                "clarity": score * 0.95,
-                "completeness": score * 0.85
-            },
-            feedback=feedback,
-            confidence=0.7,
-            metadata={
-                "is_mock": True,
-                "question_type": getattr(question, 'question_type', 'unknown'),
-                "context": context or {}
-            }
+            is_correct=score >= 70,
+            feedback="This is a mock evaluation. Enable the LLM service for real feedback.",
+            reasoning="Mock evaluation - AI service not available",
+            follow_up_suggestions=["Please enable OpenAI API for real evaluation"],
+            time_assessment=time_assessment,
+            confidence=0.5
         )
     
     async def generate_follow_up_question(
         self,
         question: Any,
-        answer: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Generate a follow-up question based on the candidate's answer.
+        answer: str,
+        evaluation: EvaluationResult
+    ) -> str:
+        """Generate an intelligent follow-up question based on the response."""
         
-        Args:
-            question: The original question
-            answer: The candidate's answer
-            context: Additional context about the interview
-            
-        Returns:
-            Dictionary with the follow-up question and metadata
-        """
         if not self.client:
-            return self._mock_follow_up_question(question, answer, context)
-            
+            return f"Can you explain your approach to {getattr(question, 'category', 'Excel').lower()} in more detail?"
+        
+        prompt = f"""Based on this Excel interview exchange, generate one thoughtful follow-up question.
+
+Original Question: {getattr(question, 'prompt', getattr(question, 'text', str(question)))}
+Candidate's Answer: {answer}
+Evaluation Score: {evaluation.score}/100
+Areas for Improvement: {evaluation.feedback}
+
+Generate a follow-up question that:
+1. Builds on their answer (whether strong or weak)
+2. Tests deeper understanding of the same concept
+3. Is appropriate for their demonstrated skill level
+4. Would provide valuable insight into their Excel expertise
+
+Return only the follow-up question text, no additional formatting."""
+
         try:
-            # Get the follow-up prompt template
-            prompt_template = self.prompts.get("follow_up_question")
-            
-            if not prompt_template:
-                raise ValueError("No follow-up prompt template found")
-            
-            # Format the prompt with question and answer
-            prompt = prompt_template.format(
-                question=question.text,
-                answer=json.dumps(answer, indent=2),
-                context=json.dumps(context or {}, indent=2),
-                **question.dict()
-            )
-            
-            # Call the LLM
             response = self.client.chat.completions.create(
+                model=self.model,
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an expert technical interviewer. "
-                                  "Generate a relevant follow-up question based on the candidate's answer."
+                        "content": "You are an expert Excel interviewer. Generate insightful follow-up questions that reveal deeper understanding."
                     },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+                    {"role": "user", "content": prompt}
                 ],
-                model=self.model,
-                temperature=0.7,  # Slightly more creative for follow-ups
-                max_tokens=500
+                temperature=0.5
             )
             
-            # Parse the response
-            follow_up = response.choices[0].message.content.strip()
-            
-            return {
-                "text": follow_up,
-                "context": {
-                    "original_question_id": getattr(question, 'id', None),
-                    "original_answer": answer,
-                    "generated_at": time.time()
-                }
-            }
+            return response.choices[0].message.content.strip()
             
         except Exception as e:
             logger.error(f"Error generating follow-up question: {e}")
-            return self._mock_follow_up_question(question, answer, context)
-    
-    def _mock_follow_up_question(
-        self,
-        question: Any,
-        answer: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Generate a mock follow-up question for testing."""
-        logger.warning("Using mock follow-up question (LLM not available)")
-        
-        return {
-            "text": f"Can you elaborate more on {list(answer.keys())[0] if answer else 'your answer'}?",
-            "context": {
-                "original_question_id": getattr(question, 'id', None),
-                "is_mock": True,
-                "generated_at": time.time()
-            }
-        }
+            return f"Can you explain your approach to {getattr(question, 'category', 'Excel').lower()} in more detail?"
 
 # Global LLM service instance
 llm_service = LLMService()

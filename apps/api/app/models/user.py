@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List
-from sqlalchemy import String, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy import String, Boolean, DateTime, JSON, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
