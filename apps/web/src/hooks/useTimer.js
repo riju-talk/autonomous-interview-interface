@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export function useTimer(initialTime = 0, { onComplete } = {}) {
   const [time, setTime] = useState(initialTime);
