@@ -1,0 +1,21 @@
+Problem Statement: "AI-Powered Excel Mock Interviewer"
+1. The Business Context (The 'Why')
+Our company is rapidly expanding its Finance, Operations, and Data Analytics divisions. A key skill for all new hires is advanced profi ciency in Microsoft Excel. However, our current screening process is a major bottleneck. Manual technical interviews for Excel are time-consuming for our senior analysts and lead to inconsistent evaluations. This slows down our hiring pipeline and impacts our growth targets.
+We believe an AI-driven solution can solve this problem.
+2. Your Role & Mission (Setting the Persona)
+You are the founding AI Product Engineer for this initiative. Your mission is to design the strategy and build an automated system to assess a candidate's Excel skills.
+Your role is hybrid: you must think like a Product Manager to defi ne the solution and its success, and like an AI Engineer to build the system. We are intentionally leaving the solution space open-ended. While a "conversational AI" is one path, you are encouraged to propose the best possible solution, even if it's different.
+Core Requirements:
+1. Structured Interview Flow: The agent must manage a coherent, multi-turn conversation that simulates a real interview. It should introduce itself, explain the process, ask a series of questions, and provide a concluding summary
+2. Intelligent Answer Evaluation: This is the core challenge. The agent must evaluate the user's responses.
+3. Agentic Behavior and State Management: The agent needs to think and act like an interviewer.
+4. Constructive Feedback Report: At the end of the interview, the agent must generate a performance summary.
+Expected Deliverables
+1. Design Document & Approach Strategy
+2. Working Proof-of-Concept (PoC):
+● The complete, runnable source code in a shared repository. 1
+● Deployed Link for the Mock Interviewer.
+● A few sample interview transcripts demonstrating the agent's capabilities.
+Project Constraints & Ambiguities (The 'Real World')
+● Technology Stack: You have full autonomy, but you must justify your choices (e.g., choice of LLM, frameworks, hosting platform).
+● The "Cold Start" Problem: Assume you have no pre-existing dataset of mock Excel interview transcripts. Your strategy must account for how you would bootstrap and improve the system over time.
