@@ -1,28 +1,47 @@
 {
-  "name": "docs",
+  "name": "ai-excel-interviewer-api",
   "version": "0.1.0",
-  "type": "module",
   "private": true,
+  "description": "AI-Powered Excel Mock Interviewer - FastAPI Backend",
   "scripts": {
-    "dev": "next dev --turbopack --port 3001",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint --max-warnings 0",
-    "check-types": "tsc --noEmit"
+    "dev": "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "start": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "test": "pytest -v",
+    "test:cov": "pytest --cov=app --cov-report=term-missing",
+    "lint": "ruff check . && black --check . && mypy .",
+    "format": "black . && ruff --fix .",
+    "migrate": "alembic upgrade head",
+    "makemigrations": "alembic revision --autogenerate -m",
+    "prestart": "python -m app.initial_data",
+    "docker:build": "docker build -t ai-excel-interviewer-api .",
+    "docker:run": "docker run -p 8000:8000 ai-excel-interviewer-api"
   },
   "dependencies": {
-    "@repo/ui": "*",
-    "next": "^15.5.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "husky": "^9.0.0"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
-    "@types/node": "^22.15.3",
-    "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.1",
-    "eslint": "^9.34.0",
-    "typescript": "5.9.2"
+    "@commitlint/cz-commitlint": "^19.0.0",
+    "commitizen": "^4.3.0",
+    "cz-conventional-changelog": "^3.3.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "lint-staged": {
+    "*.py": [
+      "black",
+      "ruff --fix",
+      "mypy"
+    ]
   }
 }
