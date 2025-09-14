@@ -57,14 +57,14 @@ class ChromaService:
     def get_or_create_collection(
         self, 
         name: str, 
-        embedding_model: str = "all-MiniLM-L6-v2"
+        embedding_model: str = "default"
     ) -> chromadb.Collection:
         """
         Get or create a Chroma collection with the specified name and embedding model.
         
         Args:
             name: Name of the collection
-            embedding_model: Name of the sentence-transformers model to use for embeddings
+            embedding_model: Name of the embedding model to use (default uses built-in)
             
         Returns:
             chromadb.Collection: The requested collection
@@ -74,10 +74,17 @@ class ChromaService:
             
         if name not in self._collections:
             try:
-                # Use sentence-transformers for local embedding generation
-                embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
-                    model_name=embedding_model
-                )
+                # Try to use sentence-transformers, fallback to default
+                embedding_function = None
+                try:
+                    embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+                        model_name="all-MiniLM-L6-v2"
+                    )
+                    logger.info(f"Using SentenceTransformer embeddings for collection: {name}")
+                except Exception as e:
+                    logger.warning(f"SentenceTransformer not available, using default embeddings: {e}")
+                    # Use default embedding function (ChromaDB's built-in)
+                    embedding_function = embedding_functions.DefaultEmbeddingFunction()
                 
                 self._collections[name] = self._client.get_or_create_collection(
                     name=name,

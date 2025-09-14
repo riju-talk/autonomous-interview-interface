@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # Database - Use environment variable if available, fallback to SQLite for development
     DATABASE_URL: str = "sqlite+aiosqlite:///./interview.db"
     TEST_DATABASE_URL: str = "sqlite+aiosqlite:///./test_interview.db"
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -66,6 +68,7 @@ class Settings(BaseSettings):
     # Monitoring
     SENTRY_DSN: Optional[str] = None
     ENVIRONMENT: str = "development"
+    TESTING: bool = False
     
     # Email
     SMTP_HOST: Optional[str] = None
