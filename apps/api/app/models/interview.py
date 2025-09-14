@@ -1,9 +1,17 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
-from sqlalchemy import String, Enum as SQLEnum, Integer, ForeignKey, JSON, Float, Boolean
+from sqlalchemy import String, Enum as SQLEnum, Integer, ForeignKey, JSON, Float, Boolean, Table, Column, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
+
+# Association table for session-questions many-to-many relationship
+session_questions = Table(
+    'session_questions',
+    Base.metadata,
+    Column('session_id', Integer, ForeignKey('interview_sessions.id'), primary_key=True),
+    Column('question_id', Integer, ForeignKey('questions.id'), primary_key=True)
+)
 
 class QuestionType(str, Enum):
     OBJECTIVE = "objective"
@@ -16,6 +24,7 @@ class DifficultyLevel(str, Enum):
     HARD = "hard"
 
 class InterviewSessionStatus(str, Enum):
+    DRAFT = "draft"
     CREATED = "created"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -25,12 +34,14 @@ class InterviewSession(Base):
     """Represents an interview session for a user."""
     __tablename__ = "interview_sessions"
     
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
+    candidate_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
+    interviewer_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     status: Mapped[InterviewSessionStatus] = mapped_column(
         SQLEnum(InterviewSessionStatus),
-        default=InterviewSessionStatus.CREATED,
+        default=InterviewSessionStatus.DRAFT,
         nullable=False
     )
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     current_question_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     difficulty: Mapped[DifficultyLevel] = mapped_column(
         SQLEnum(DifficultyLevel),
@@ -39,14 +50,17 @@ class InterviewSession(Base):
     )
     score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     feedback: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="sessions")
+    candidate: Mapped["User"] = relationship("User", foreign_keys=[candidate_id], back_populates="candidate_sessions")
+    interviewer: Mapped[Optional["User"]] = relationship("User", foreign_keys=[interviewer_id], back_populates="interviewer_sessions")
     responses: Mapped[List["InterviewResponse"]] = relationship(
         "InterviewResponse", 
         back_populates="session",
         cascade="all, delete-orphan"
     )
+    questions: Mapped[List["Question"]] = relationship("Question", secondary="session_questions", back_populates="sessions")
     
     def __repr__(self) -> str:
         return f"<InterviewSession {self.id} - {self.status}>"
@@ -71,6 +85,9 @@ class Question(Base):
     correct_answer: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     explanation: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     metadata_: Mapped[Optional[Dict[str, Any]]] = mapped_column("metadata", JSON, nullable=True)
+    
+    # Relationships
+    sessions: Mapped[List["InterviewSession"]] = relationship("InterviewSession", secondary=session_questions, back_populates="questions")
     
     def __repr__(self) -> str:
         return f"<Question {self.id} - {self.category} - {self.difficulty}>"

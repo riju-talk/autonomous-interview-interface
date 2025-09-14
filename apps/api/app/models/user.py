@@ -21,7 +21,16 @@ class User(Base):
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
     # Relationships
-    sessions: Mapped[List["InterviewSession"]] = relationship("InterviewSession", back_populates="user")
+    candidate_sessions: Mapped[List["InterviewSession"]] = relationship(
+        "InterviewSession", 
+        foreign_keys="InterviewSession.candidate_id",
+        back_populates="candidate"
+    )
+    interviewer_sessions: Mapped[List["InterviewSession"]] = relationship(
+        "InterviewSession", 
+        foreign_keys="InterviewSession.interviewer_id", 
+        back_populates="interviewer"
+    )
     
     def __repr__(self) -> str:
         return f"<User {self.email}>"

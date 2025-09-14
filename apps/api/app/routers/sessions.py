@@ -5,9 +5,11 @@ from typing import List, Optional, Dict, Any
 import uuid
 
 from app.core.database import get_db
-from app.core.security import get_current_active_user
+from app.core.auth import get_current_active_user
 from app.models.user import User
 from app.models.interview import InterviewSession, InterviewResponse, Question
+from app.crud.user import user as crud_user
+from app.crud.interview import interview_session as crud_session, question as crud_question, interview_response as crud_response
 from app.schemas.interview import (
     InterviewSessionCreate,
     InterviewSessionUpdate,
@@ -36,7 +38,7 @@ async def create_interview_session(
     Create a new interview session.
     """
     # Check if candidate exists
-    candidate = await User.get(db, session_in.candidate_id)
+    candidate = await crud_user.get(db, id=session_in.candidate_id)
     if not candidate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -45,7 +47,7 @@ async def create_interview_session(
     
     # Check if interviewer exists if provided
     if session_in.interviewer_id:
-        interviewer = await User.get(db, session_in.interviewer_id)
+        interviewer = await crud_user.get(db, id=session_in.interviewer_id)
         if not interviewer:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -55,7 +57,7 @@ async def create_interview_session(
     # Get questions
     questions = []
     if session_in.question_ids:
-        questions = await Question.get_multi_by_ids(db, ids=session_in.question_ids)
+        questions = await crud_question.get_multi_by_ids(db, ids=session_in.question_ids)
         if len(questions) != len(session_in.question_ids):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -64,7 +66,8 @@ async def create_interview_session(
     
     # Create session
     session_data = session_in.dict(exclude={"question_ids"})
-    db_session = InterviewSession(**session_data, created_by=current_user.id)
+    session_data["created_by"] = current_user.id
+    db_session = InterviewSession(**session_data)
     db.add(db_session)
     
     # Add questions to session
@@ -86,7 +89,7 @@ async def get_interview_session(
     Get interview session by ID.
     """
     # Get session with relationships
-    session = await InterviewSession.get_with_details(db, id=session_id)
+    session = await crud_session.get_with_details(db, id=session_id)
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -117,7 +120,7 @@ async def update_interview_session(
     Update an interview session.
     """
     # Get session
-    session = await InterviewSession.get(db, id=session_id)
+    session = await crud_session.get(db, id=session_id)
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -176,12 +179,13 @@ async def list_interview_sessions(
         if not (candidate_id or interviewer_id):
             candidate_id = current_user.id
     
-    # Get sessions
-    sessions = await InterviewSession.get_multi(
+    # Get sessions (convert schema enum to string for CRUD filtering)
+    status_value = status.value if status else None
+    sessions = await crud_session.get_multi_filtered(
         db,
         skip=skip,
         limit=limit,
-        status=status,
+        status=status_value,
         candidate_id=candidate_id,
         interviewer_id=interviewer_id
     )
@@ -189,7 +193,17 @@ async def list_interview_sessions(
     # Convert to summary format
     summaries = []
     for session in sessions:
-        summary = await session.to_summary(db)
+        # Create summary manually since to_summary doesn't exist
+        responses = await crud_response.get_by_session(db, session_id=session.id)
+        summary = {
+            "session_id": session.id,
+            "title": getattr(session, 'title', f"Interview Session {session.id}"),
+            "status": session.status,
+            "total_questions": len(session.questions) if hasattr(session, 'questions') else 0,
+            "questions_answered": len(responses),
+            "average_score": session.score,
+            "completed_at": session.completed_at
+        }
         summaries.append(summary)
     
     return summaries
@@ -204,7 +218,7 @@ async def start_interview_session(
     Start an interview session.
     """
     # Get session with questions
-    session = await InterviewSession.get_with_questions(db, id=session_id)
+    session = await crud_session.get_with_questions(db, id=session_id)
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -238,7 +252,6 @@ async def start_interview_session(
     
     # Update session status
     session.status = InterviewSessionStatus.IN_PROGRESS
-    session.started_at = datetime.utcnow()
     
     await db.commit()
     await db.refresh(session)
@@ -256,7 +269,7 @@ async def submit_answer(
     Submit an answer to an interview question.
     """
     # Get session
-    session = await InterviewSession.get_with_questions(db, id=session_id)
+    session = await crud_session.get_with_questions(db, id=session_id)
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -278,7 +291,7 @@ async def submit_answer(
         )
     
     # Get question
-    question = await Question.get(db, id=answer_submission.question_id)
+    question = await crud_question.get(db, id=answer_submission.question_id)
     if not question:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -293,15 +306,15 @@ async def submit_answer(
         )
     
     # Check if answer already exists
-    existing_response = await InterviewResponse.get_by_session_and_question(
+    existing_response = await crud_response.get_by_session_and_question(
         db, session_id=session_id, question_id=question.id
     )
     
     if existing_response:
         # Update existing response
-        existing_response.answer = answer_submission.answer
-        existing_response.time_taken = answer_submission.time_taken
-        existing_response.metadata = answer_submission.metadata
+        existing_response.user_answer = answer_submission.answer
+        existing_response.processing_time = answer_submission.time_taken
+        # Note: metadata field doesn't exist in model
         existing_response.updated_at = datetime.utcnow()
         
         db.add(existing_response)
@@ -314,17 +327,15 @@ async def submit_answer(
         response_data = {
             "session_id": session_id,
             "question_id": question.id,
-            "answer": answer_submission.answer,
-            "time_taken": answer_submission.time_taken,
-            "metadata": answer_submission.metadata,
-            "created_by": current_user.id
+            "user_answer": answer_submission.answer,
+            "processing_time": answer_submission.time_taken
         }
         
         db_response = InterviewResponse(**response_data)
         db.add(db_response)
         
         # If this is the last question, mark session as completed
-        responses = await InterviewResponse.get_by_session(db, session_id=session_id)
+        responses = await crud_response.get_by_session(db, session_id=session_id)
         if len(responses) + 1 == len(session.questions):
             session.status = InterviewSessionStatus.COMPLETED
             session.completed_at = datetime.utcnow()
@@ -345,7 +356,7 @@ async def evaluate_answer(
     Evaluate an answer using the LLM service.
     """
     # Get session and response
-    session = await InterviewSession.get(db, id=session_id)
+    session = await crud_session.get(db, id=session_id)
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -364,7 +375,7 @@ async def evaluate_answer(
         )
     
     # Get response
-    response = await InterviewResponse.get_by_session_and_question(
+    response = await crud_response.get_by_session_and_question(
         db, session_id=session_id, question_id=question_id
     )
     
@@ -375,7 +386,7 @@ async def evaluate_answer(
         )
     
     # Get question
-    question = await Question.get(db, id=question_id)
+    question = await crud_question.get(db, id=question_id)
     if not question:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -385,7 +396,7 @@ async def evaluate_answer(
     # Evaluate using LLM service
     evaluation = await llm_service.evaluate_response(
         question=question,
-        answer=response.answer,
+        answer=response.user_answer,
         context={
             "session_id": session_id,
             "candidate_id": session.candidate_id,
@@ -396,10 +407,10 @@ async def evaluate_answer(
         }
     )
     
-    # Update response with evaluation
-    response.evaluation_result = evaluation.dict()
-    response.evaluated_at = datetime.utcnow()
-    response.evaluator_id = current_user.id
+    # Update response with evaluation (using existing model fields)
+    response.score = evaluation.score
+    response.is_correct = evaluation.is_correct
+    response.feedback = {"detail": evaluation.feedback, "reasoning": evaluation.reasoning}
     
     # Update session score if all questions are evaluated
     await _update_session_score(db, session)
@@ -411,26 +422,28 @@ async def evaluate_answer(
 
 async def _update_session_score(db: AsyncSession, session: InterviewSession) -> None:
     """Update the overall session score based on evaluated responses."""
-    responses = await InterviewResponse.get_by_session(
+    responses = await crud_response.get_by_session(
         db, session_id=session.id, evaluated_only=True
     )
     
     if not responses:
         return
     
-    # Calculate average score
+    # Calculate average score using the score field
     total_score = sum(
-        response.evaluation_result.get("score", 0) 
+        response.score or 0
         for response in responses 
-        if response.evaluation_result
+        if response.score is not None
     )
     
-    session.score = total_score / len(responses)
+    if responses:
+        session.score = total_score / len(responses)
     
-    # If all questions are evaluated, mark as completed
-    questions = await session.awaitable_attrs.questions
-    if len(responses) == len(questions):
-        session.status = InterviewSessionStatus.COMPLETED
-        session.completed_at = datetime.utcnow()
+    # Get session with questions to check completion
+    session_with_questions = await crud_session.get_with_questions(db, id=session.id)
+    if session_with_questions and session_with_questions.questions:
+        if len(responses) == len(session_with_questions.questions):
+            session.status = InterviewSessionStatus.COMPLETED
+            session.completed_at = datetime.utcnow()
     
     db.add(session)

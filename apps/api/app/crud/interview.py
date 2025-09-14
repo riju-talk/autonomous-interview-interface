@@ -21,8 +21,10 @@ class CRUDInterviewSession(CRUDBase[InterviewSession, InterviewSessionCreate, In
         result = await db.execute(
             select(InterviewSession)
             .options(
-                selectinload(InterviewSession.user),
-                selectinload(InterviewSession.responses)
+                selectinload(InterviewSession.candidate),
+                selectinload(InterviewSession.interviewer),
+                selectinload(InterviewSession.responses),
+                selectinload(InterviewSession.questions)
             )
             .filter(InterviewSession.id == id)
         )
@@ -32,10 +34,37 @@ class CRUDInterviewSession(CRUDBase[InterviewSession, InterviewSessionCreate, In
         """Get interview session with questions."""
         result = await db.execute(
             select(InterviewSession)
-            .options(selectinload(InterviewSession.responses))
+            .options(
+                selectinload(InterviewSession.questions),
+                selectinload(InterviewSession.responses)
+            )
             .filter(InterviewSession.id == id)
         )
         return result.scalar_one_or_none()
+    
+    async def get_multi_filtered(
+        self,
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        candidate_id: Optional[int] = None,
+        interviewer_id: Optional[int] = None,
+        status: Optional[str] = None
+    ) -> List[InterviewSession]:
+        """Get multiple sessions with filtering."""
+        query = select(InterviewSession)
+        
+        if candidate_id:
+            query = query.filter(InterviewSession.candidate_id == candidate_id)
+        if interviewer_id:
+            query = query.filter(InterviewSession.interviewer_id == interviewer_id)
+        if status:
+            query = query.filter(InterviewSession.status == status)
+        
+        query = query.offset(skip).limit(limit)
+        result = await db.execute(query)
+        return result.scalars().all()
 
 
 class CRUDQuestion(CRUDBase[Question, QuestionCreate, QuestionUpdate]):
@@ -53,6 +82,11 @@ class CRUDQuestion(CRUDBase[Question, QuestionCreate, QuestionUpdate]):
         if difficulty:
             query = query.filter(Question.difficulty == difficulty)
         result = await db.execute(query)
+        return result.scalars().all()
+    
+    async def get_multi_by_ids(self, db: AsyncSession, *, ids: List[int]) -> List[Question]:
+        """Get multiple questions by list of IDs."""
+        result = await db.execute(select(Question).filter(Question.id.in_(ids)))
         return result.scalars().all()
 
 
