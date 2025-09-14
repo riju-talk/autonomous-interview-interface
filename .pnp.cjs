@@ -53,6 +53,7 @@ const RAW_RUNTIME_STATE =
       [null, {\
         "packageLocation": "./",\
         "packageDependencies": [\
+          ["@types/node", "npm:24.3.3"],\
           ["autonomous-analyst-interviewer", "workspace:."],\
           ["prettier", "npm:3.6.2"],\
           ["turbo", "npm:2.5.6"],\
@@ -5424,6 +5425,14 @@ const RAW_RUNTIME_STATE =
           ["undici-types", "npm:6.21.0"]\
         ],\
         "linkType": "HARD"\
+      }],\
+      ["npm:24.3.3", {\
+        "packageLocation": "./.local/share/yarn/berry/cache/@types-node-npm-24.3.3-38a5eda0cc-10c0.zip/node_modules/@types/node/",\
+        "packageDependencies": [\
+          ["@types/node", "npm:24.3.3"],\
+          ["undici-types", "npm:7.10.0"]\
+        ],\
+        "linkType": "HARD"\
       }]\
     ]],\
     ["@types/prop-types", [\
@@ -6114,6 +6123,7 @@ const RAW_RUNTIME_STATE =
       ["workspace:.", {\
         "packageLocation": "./",\
         "packageDependencies": [\
+          ["@types/node", "npm:24.3.3"],\
           ["autonomous-analyst-interviewer", "workspace:."],\
           ["prettier", "npm:3.6.2"],\
           ["turbo", "npm:2.5.6"],\
@@ -12867,6 +12877,13 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.local/share/yarn/berry/cache/undici-types-npm-6.21.0-eb2b0ed56a-10c0.zip/node_modules/undici-types/",\
         "packageDependencies": [\
           ["undici-types", "npm:6.21.0"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:7.10.0", {\
+        "packageLocation": "./.local/share/yarn/berry/cache/undici-types-npm-7.10.0-cd8324b9eb-10c0.zip/node_modules/undici-types/",\
+        "packageDependencies": [\
+          ["undici-types", "npm:7.10.0"]\
         ],\
         "linkType": "HARD"\
       }]\

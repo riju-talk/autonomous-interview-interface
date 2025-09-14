@@ -13,12 +13,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_urlsafe(32)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@postgres:5432/interviewdb"
-    TEST_DATABASE_URL: str = "postgresql+asyncpg://postgres:password@postgres:5432/test_interviewdb"
+    # Database - Use environment variable if available, fallback to SQLite for development
+    DATABASE_URL: str = "sqlite+aiosqlite:///./interview.db"
+    TEST_DATABASE_URL: str = "sqlite+aiosqlite:///./test_interview.db"
     
     # Redis
-    REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_PASSWORD: Optional[str] = None
     REDIS_POOL_SIZE: int = 10
     
@@ -47,11 +47,11 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     
-    # CORS
+    # CORS - Allow Replit frontend access
     CORS_ORIGINS: List[str] = ["*"]
     
     # Server
-    HOST: str = "0.0.0.0"
+    HOST: str = "localhost"
     PORT: int = 8000
     WORKERS: int = 1
     RELOAD: bool = False
