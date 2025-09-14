@@ -17,9 +17,12 @@ class Base:
 
     @declared_attr
     def __tablename__(cls) -> str:
-        ""
-        Generate __tablename__ automatically.
+        """Generate __tablename__ automatically.
+        
         Converts CamelCase class name to snake_case table name.
+        
+        Returns:
+            str: The table name in snake_case
         """
         return ''.join(['_' + i.lower() if i.isupper() else i for i in cls.__name__]).lstrip('_')
 

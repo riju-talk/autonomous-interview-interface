@@ -1,5 +1,5 @@
 {
-  "name": "autonomous-interviewer-api",
+  "name": "backend-analyst-interviewer",
   "version": "0.1.0",
   "private": true,
   "description": "Autonomous Interviewer - FastAPI Backend",

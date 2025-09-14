@@ -26,6 +26,10 @@
     "apps/*",
     "packages/*"
   ],
+  "resolutions": {
+    "frontend-analyst-interviewer": "workspace:apps/web",
+    "backend-analyst-interviewer": "workspace:apps/api"
+  },
   "dependencies": {
     "@types/node": "^24.3.3"
   }

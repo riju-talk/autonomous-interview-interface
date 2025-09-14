@@ -20,9 +20,11 @@ class ResponseStatus(str, Enum):
     BAD_REQUEST = "bad_request"
 
 class BaseResponse(BaseModel, Generic[T]):
-    ""
-    Base response model for all API responses.
-    
+    """Base response model for all API responses.
+
+    This model represents a standard response from the API, containing a status, 
+    optional data, error details, and additional metadata.
+
     Attributes:
         status: Response status (success/error)
         data: Response data (if any)
