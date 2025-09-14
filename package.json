@@ -4,24 +4,22 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "dev:web": "cd apps/web && yarn dev",
-    "dev:api": "cd apps/api && yarn dev",
+    "dev:web": "cd apps/web && npm run dev",
+    "dev:api": "cd apps/api && npm run dev",
     "start": "turbo run start",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types",
+    "format": "prettier --write \"**/*.{js,jsx,md}\"",
     "test": "turbo run test",
     "clean": "turbo run clean"
   },
   "devDependencies": {
     "prettier": "^3.6.2",
-    "turbo": "^2.5.6",
-    "typescript": "5.9.2"
+    "turbo": "^2.5.6"
   },
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "yarn@4.9.4",
+  "packageManager": "npm@10.8.0",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -30,7 +28,5 @@
     "frontend-analyst-interviewer": "workspace:apps/web",
     "backend-analyst-interviewer": "workspace:apps/api"
   },
-  "dependencies": {
-    "@types/node": "^24.3.3"
-  }
+  "dependencies": {}
 }
