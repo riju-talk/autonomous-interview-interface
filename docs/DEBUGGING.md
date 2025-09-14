@@ -96,8 +96,6 @@ redis-server
 
 # Edit apps/api/.env
 GROQ_API_KEY="your-groq-api-key-here"
-# Or
-OPENAI_API_KEY="your-openai-api-key-here"
 
 # Restart backend workflow
 # Test with:
@@ -337,7 +335,7 @@ python --version >> debug_info.txt
 node --version >> debug_info.txt
 
 echo -e "\n=== Environment ===" >> debug_info.txt
-env | grep -E "(GROQ|OPENAI|DATABASE|REDIS)" >> debug_info.txt
+env | grep -E "(GROQ|DATABASE|REDIS)" >> debug_info.txt
 
 echo -e "\n=== Service Status ===" >> debug_info.txt
 curl -s http://localhost:8000/api/health >> debug_info.txt 2>&1

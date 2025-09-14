@@ -15,9 +15,6 @@
     "lint:fix": "black . && ruff --fix .",
     "format": "black . && ruff --fix .",
     "type-check": "mypy .",
-    "migrate": "alembic upgrade head",
-    "makemigrations": "alembic revision --autogenerate -m",
-    "downgrade": "alembic downgrade -1",
     "prestart": "python -m app.initial_data",
     "docker:build": "docker build -t autonomous-interviewer-api .",
     "docker:run": "docker run -p 8000:8000 autonomous-interviewer-api"

@@ -4,9 +4,9 @@ import json
 import time
 import os
 from pathlib import Path
-
-from openai import OpenAI
+import groq
 from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List
 
 from app.core.config import settings
 
@@ -34,32 +34,31 @@ class EvaluationResult(BaseModel):
     )
 
 class LLMService:
-    """Service for AI-powered Excel interview evaluation using OpenAI."""
+    """Service for AI-powered Excel interview evaluation using Groq."""
     
     def __init__(self):
-        # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
-        # do not change this unless explicitly requested by the user
+        # Using Groq's LLaMA3 model for inference
         self.client = None
-        self.model = "gpt-5"
+        self.model = "llama3-70b-8192"  # Groq's LLaMA3 model
         self.temperature = 0.3
         self.max_tokens = 1024
         self._initialize_client()
     
     def _initialize_client(self):
-        """Initialize the OpenAI client."""
-        api_key = os.environ.get("OPENAI_API_KEY")
+        """Initialize the Groq client."""
+        api_key = os.environ.get("GROQ_API_KEY")
         if not api_key:
             logger.warning(
-                "OPENAI_API_KEY not set. LLM functionality will be limited. "
+                "GROQ_API_KEY not set. LLM functionality will be limited. "
                 "Using mock responses."
             )
             return
             
         try:
-            self.client = OpenAI(api_key=api_key)
-            logger.info("Successfully initialized OpenAI client")
+            self.client = groq.Client(api_key=api_key)
+            logger.info("Successfully initialized Groq client")
         except Exception as e:
-            logger.error(f"Failed to initialize OpenAI client: {e}")
+            logger.error(f"Failed to initialize Groq client: {e}")
             raise
     
     def _assess_response_time(self, processing_time: Optional[float], difficulty: str) -> str:
@@ -137,7 +136,7 @@ Focus on:
 
 Respond in JSON format with these exact keys: score, is_correct, feedback, reasoning, follow_up_suggestions, confidence"""
             
-            # Call OpenAI
+            # Call Groq API
             response = self.client.chat.completions.create(
                 messages=[
                     {
@@ -195,7 +194,7 @@ Respond in JSON format with these exact keys: score, is_correct, feedback, reaso
             is_correct=score >= 70,
             feedback="This is a mock evaluation. Enable the LLM service for real feedback.",
             reasoning="Mock evaluation - AI service not available",
-            follow_up_suggestions=["Please enable OpenAI API for real evaluation"],
+            follow_up_suggestions=["Please enable Groq API for real evaluation"],
             time_assessment=time_assessment,
             confidence=0.5
         )

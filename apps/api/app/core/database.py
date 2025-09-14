@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     AsyncEngine,
-    AsyncConnection,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from sqlalchemy.pool import NullPool
@@ -134,7 +133,6 @@ async def get_test_db() -> AsyncGenerator[AsyncSession, None]:
 Base = declarative_base()
 
 # Import models after Base is defined to ensure proper registration
-from app.models.user import User  # noqa: E402
 from app.models.interview import (  # noqa: E402
     Question,
     InterviewSession,
@@ -144,37 +142,17 @@ from app.models.interview import (  # noqa: E402
 # Ensure all models are imported for proper table creation
 __all__ = [
     'Base',
-    'User',
     'Question',
     'InterviewSession',
     'InterviewResponse',
 ]
 
 async def init_db() -> None:
-    """Initialize database tables.
-    
-    Note:
-        In production, use Alembic migrations instead of this function.
-        This is only for development and testing purposes.
-    """
+    """Initialize database tables by creating all defined models."""
     is_test = os.getenv("ENV") == "test"
     current_engine = test_engine if is_test else engine
     
     async with current_engine.begin() as conn:
-        if is_test:
-            # For tests, drop and create all tables
-            await conn.run_sync(Base.metadata.drop_all)
-        
-        # Create all tables
+        # Always drop and create all tables for simplicity
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    
-    if not is_test:
-        # Apply any pending migrations in development
-        try:
-            from alembic import command
-            from alembic.config import Config
-            
-            alembic_cfg = Config("alembic.ini")
-            command.upgrade(alembic_cfg, "head")
-        except ImportError:
-            pass  # Alembic not available, skip migrations

@@ -7,16 +7,25 @@ until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER"
   sleep 1
 done
 
->&2 echo "PostgreSQL is up - executing command"
+>&2 echo "PostgreSQL is up - initializing database..."
 
-# Run database migrations
-echo "Running database migrations..."
-alembic upgrade head
+# Initialize database tables
+echo "Initializing database schema..."
+python -c "
+import asyncio
+from app.core.database import init_db
+asyncio.run(init_db())
+"
 
-# Load initial data (if any)
-if [ -f "/app/scripts/seed_data.py" ]; then
-    echo "Loading initial data..."
-    python /app/scripts/seed_data.py
-fi
+# Load sample data
+echo "Loading sample data..."
+python -c "
+import asyncio
+from app.data.sample import load_all_sample_data
+result = asyncio.run(load_all_sample_data())
+print(f'Successfully loaded {result["questions_loaded"]} questions and created {result["sessions_created"]} interview sessions.')
+"
+
+echo "Database initialization completed successfully!"
 
 echo "Database initialization complete"

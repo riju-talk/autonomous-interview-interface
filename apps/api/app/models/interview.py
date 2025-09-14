@@ -31,17 +31,14 @@ class InterviewSessionStatus(str, Enum):
     ABANDONED = "abandoned"
 
 class InterviewSession(Base):
-    """Represents an interview session for a user."""
+    """Represents an interview session."""
     __tablename__ = "interview_sessions"
     
-    candidate_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
-    interviewer_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     status: Mapped[InterviewSessionStatus] = mapped_column(
         SQLEnum(InterviewSessionStatus),
         default=InterviewSessionStatus.DRAFT,
         nullable=False
     )
-    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     current_question_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     difficulty: Mapped[DifficultyLevel] = mapped_column(
         SQLEnum(DifficultyLevel),
@@ -53,8 +50,6 @@ class InterviewSession(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
     # Relationships
-    candidate: Mapped["User"] = relationship("User", foreign_keys=[candidate_id], back_populates="candidate_sessions")
-    interviewer: Mapped[Optional["User"]] = relationship("User", foreign_keys=[interviewer_id], back_populates="interviewer_sessions")
     responses: Mapped[List["InterviewResponse"]] = relationship(
         "InterviewResponse", 
         back_populates="session",

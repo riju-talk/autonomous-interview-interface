@@ -77,15 +77,14 @@ VITE_ENVIRONMENT=development
 ```bash
 # apps/api/.env
 DATABASE_URL=sqlite+aiosqlite:///./interview.db
-GROQ_API_KEY=""  # Optional - enables real AI evaluation
-OPENAI_API_KEY=""  # Optional - fallback for LLM services
+GROQ_API_KEY=""  # Required for AI evaluation
 ```
 
 ## 🎯 Next Steps
 
 1. **Browse the Frontend**: Visit http://localhost:5000
 2. **Explore API Docs**: Visit http://localhost:8000/docs
-3. **Set up AI Keys**: Add `GROQ_API_KEY` or `OPENAI_API_KEY` for real AI features
+3. **Set up AI Keys**: Add `GROQ_API_KEY` for real AI features
 4. **Start Development**: See [Development Workflow](./DEVELOPMENT.md)
 
 ## 🆘 Quick Troubleshooting

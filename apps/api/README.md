@@ -4,18 +4,13 @@ This is the backend API for the Autonomous Interview Interface, a comprehensive 
 
 ## 🚀 Features
 
-- **Authentication & Authorization**
-  - JWT-based authentication
-  - OAuth2 with GitHub
-  - Role-based access control
-
 - **Interview Management**
   - Create and manage interview sessions
   - Support for different interview types and templates
   - Real-time progress tracking
 
 - **AI-Powered Evaluation**
-  - Response evaluation using multiple LLM providers (OpenAI, Anthropic, Groq)
+  - Response evaluation using Groq's LLM services
   - Detailed feedback and scoring
   - Support for coding challenges and technical questions
 
@@ -35,8 +30,7 @@ This is the backend API for the Autonomous Interview Interface, a comprehensive 
 - **Database**: PostgreSQL with SQLAlchemy ORM
 - **Caching & Message Broker**: Redis
 - **Vector Database**: ChromaDB
-- **AI/ML**: LangChain, OpenAI, Anthropic, Groq
-- **Authentication**: JWT, OAuth2
+- **AI/ML**: LangChain, Groq
 - **Containerization**: Docker & Docker Compose
 - **Monitoring**: Sentry, Prometheus
 - **Documentation**: OpenAPI/Swagger
@@ -205,11 +199,7 @@ Once the API is running, you can access the interactive API documentation at:
 
 ## Available Endpoints
 
-### Authentication
-- `POST /auth/register` - Register a new user
-- `POST /auth/login` - Login with email/password
-- `GET /auth/github` - Start GitHub OAuth flow
-- `GET /auth/github/callback` - GitHub OAuth callback
+### Interview Endpoints
 - `POST /auth/refresh` - Refresh access token
 - `POST /auth/logout` - Logout
 

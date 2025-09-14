@@ -10,8 +10,6 @@ class Settings(BaseSettings):
     
     # API
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = secrets.token_urlsafe(32)
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # Database - Use environment variable if available, fallback to SQLite for development
     DATABASE_URL: str = "sqlite+aiosqlite:///./interview.db"
@@ -29,16 +27,8 @@ class Settings(BaseSettings):
     CHROMA_DIR: str = "./chroma_data"
     CHROMA_AUTH_CREDENTIALS: Optional[str] = None
     
-    # Auth
-    GITHUB_CLIENT_ID: Optional[str] = None
-    GITHUB_CLIENT_SECRET: Optional[str] = None
-    JWT_SECRET: str = secrets.token_urlsafe(32)
-    JWT_ALGORITHM: str = "HS256"
-    
     # LLM
     GROQ_API_KEY: Optional[str] = None
-    OPENAI_API_KEY: Optional[str] = None
-    ANTHROPIC_API_KEY: Optional[str] = None
     PROMPT_VERSION: str = "v1"
     
     # TTS

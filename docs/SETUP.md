@@ -7,7 +7,7 @@ Comprehensive guide for setting up the AI Excel Interview platform in any enviro
 ```mermaid
 graph TD
     A[React Frontend :5000] --> B[FastAPI Backend :8000]
-    B --> C[SQLite Database]
+    B --> C[PostgreSQL Database]
     B --> D[ChromaDB Vector Store]
     B --> E[AI Services]
     E --> F[Groq API]
@@ -18,15 +18,36 @@ graph TD
 ## 📋 System Requirements
 
 ### Development Environment
+- **Docker & Docker Compose**
 - **Python**: 3.11+ 
 - **Node.js**: 18+ with Yarn 4.x
 - **Memory**: 2GB+ RAM
 - **Storage**: 1GB+ free space
 
-### Production (Optional)
-- **Database**: PostgreSQL 13+ (or SQLite for simple deployments)
-- **Cache**: Redis 6+ (optional, graceful degradation)
-- **Compute**: 1 CPU core, 1GB RAM minimum
+### Production
+- **Docker & Docker Compose**
+- **PostgreSQL 14+**
+- **Redis 7+** (for caching)
+- **Compute**: 2 CPU cores, 2GB RAM minimum
+
+## 🛠️ Quick Start with Docker
+
+The easiest way to get started is using Docker Compose:
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Initialize the database and load sample data
+docker-compose exec api ./scripts/init-db.sh
+
+# Initialize ChromaDB
+docker-compose exec api python -c "
+import asyncio
+from app.services.chroma_service import init_chroma
+asyncio.run(init_chroma())
+"
+```
 
 ## 🛠️ Manual Installation
 
@@ -36,7 +57,7 @@ graph TD
 # Navigate to backend
 cd apps/api
 
-# Create virtual environment (if not using Replit)
+# Create virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
@@ -55,7 +76,7 @@ asyncio.run(init_db())
 "
 
 # Start backend
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 2. Frontend Setup
@@ -80,24 +101,22 @@ yarn dev
 ```bash
 cd apps/api
 
-# Test ChromaDB
+# Initialize ChromaDB
 python -c "
 import asyncio
-from app.services.chroma_service import chroma_service
-
-async def setup():
-    collection = chroma_service.get_or_create_collection('interview_questions')
-    print('✅ ChromaDB initialized')
-    
-asyncio.run(setup())
+from app.services.chroma_service import init_chroma
+print('Initializing ChromaDB...')
+asyncio.run(init_chroma())
+print('✅ ChromaDB initialized')
 "
 
-# Test LLM Services (with mock fallback)
+# Verify LLM Services
 python -c "
 from app.services.llm_service import llm_service
-print('✅ LLM services ready')
+print('\n🤖 LLM Services Status:')
 print(f'   Model: {llm_service.model}')
-print(f'   API Key Set: {bool(llm_service.client)}')
+print(f'   API Key Configured: {bool(llm_service.client)}')
+print('✅ LLM services ready')
 "
 ```
 
@@ -114,8 +133,7 @@ DEBUG=true
 SECRET_KEY="your-secret-key-here"
 
 # Database
-DATABASE_URL="sqlite+aiosqlite:///./interview.db"
-# For PostgreSQL: "postgresql+asyncpg://user:pass@localhost:5432/interview"
+DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/interview"
 
 # AI Services
 GROQ_API_KEY="your-groq-api-key"      # For fast inference
@@ -144,22 +162,23 @@ VITE_APP_SECRET=dev-shared-secret-key-2024
 VITE_ENVIRONMENT=development
 ```
 
-### Database Migration
+### Database Initialization
 
+The database is automatically initialized when you run the `init-db.sh` script. This will:
+1. Create all necessary tables
+2. Load sample questions and interview data
+3. Set up initial configurations
+
+To reinitialize the database:
 ```bash
+# Recreate database with sample data
 cd apps/api
-
-# Generate migration (if using Alembic)
-alembic revision --autogenerate -m "Initial migration"
-
-# Apply migrations
-alembic upgrade head
-
-# Or use simple init for development
 python -c "
 import asyncio
 from app.core.database import init_db
+print('Reinitializing database...')
 asyncio.run(init_db())
+print('✅ Database reinitialized')
 "
 ```
 

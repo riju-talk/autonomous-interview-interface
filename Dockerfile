@@ -1,12 +1,12 @@
 # Build stage for backend
-FROM python:3.11-slim as backend-builder
+FROM python:3.13-alpine as backend-builder
 
 WORKDIR /app/backend
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
+RUN apk update && apk add --no-cache \
+    build-base \
+    postgresql-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -17,17 +17,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 
 # Production stage for backend
-FROM python:3.11-slim as backend
+FROM python:3.13-alpine as backend
 
 WORKDIR /app/backend
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
+RUN apk update && apk add --no-cache \
+    postgresql-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies from builder
-COPY --from=backend-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=backend-builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=backend-builder /app/backend .
 
 # Expose port
