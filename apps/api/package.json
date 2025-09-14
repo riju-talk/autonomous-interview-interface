@@ -1,20 +1,26 @@
 {
-  "name": "ai-excel-interviewer-api",
+  "name": "autonomous-interviewer-api",
   "version": "0.1.0",
   "private": true,
-  "description": "AI-Powered Excel Mock Interviewer - FastAPI Backend",
+  "description": "Autonomous Interviewer - FastAPI Backend",
   "scripts": {
     "dev": "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
     "start": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "start:prod": "gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app",
     "test": "pytest -v",
+    "test:watch": "pytest -v --lf --no-cov",
     "test:cov": "pytest --cov=app --cov-report=term-missing",
+    "test:html": "pytest --cov=app --cov-report=html",
     "lint": "ruff check . && black --check . && mypy .",
+    "lint:fix": "black . && ruff --fix .",
     "format": "black . && ruff --fix .",
+    "type-check": "mypy .",
     "migrate": "alembic upgrade head",
     "makemigrations": "alembic revision --autogenerate -m",
+    "downgrade": "alembic downgrade -1",
     "prestart": "python -m app.initial_data",
-    "docker:build": "docker build -t ai-excel-interviewer-api .",
-    "docker:run": "docker run -p 8000:8000 ai-excel-interviewer-api"
+    "docker:build": "docker build -t autonomous-interviewer-api .",
+    "docker:run": "docker run -p 8000:8000 autonomous-interviewer-api"
   },
   "dependencies": {
     "@commitlint/cli": "^19.0.0",
@@ -24,7 +30,8 @@
   "devDependencies": {
     "@commitlint/cz-commitlint": "^19.0.0",
     "commitizen": "^4.3.0",
-    "cz-conventional-changelog": "^3.3.0"
+    "cz-conventional-changelog": "^3.3.0",
+    "lint-staged": "^15.0.0"
   },
   "config": {
     "commitizen": {

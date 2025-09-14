@@ -1,35 +1,58 @@
-# Excel Mock Interviewer API
+# Autonomous Interview API
 
-This is the backend API for the AI-Powered Excel Mock Interviewer application. It provides endpoints for managing interview sessions, evaluating responses, and generating feedback using AI.
+This is the backend API for the Autonomous Interview Interface, a comprehensive platform for conducting AI-powered mock interviews. The API provides endpoints for managing interview sessions, evaluating responses, and generating feedback using advanced language models.
 
-## Features
+## 🚀 Features
 
-- **User Authentication**: JWT-based authentication with email/password and GitHub OAuth
-- **Interview Management**: Create, update, and manage interview sessions
-- **Question Bank**: Store and retrieve interview questions with different difficulty levels
-- **AI-Powered Evaluation**: Evaluate candidate responses using LLM (ChatGroq)
-- **Multi-turn Conversations**: Support for follow-up questions and contextual interviews
-- **File Uploads**: Handle Excel/CSV file submissions for assignments
-- **Real-time Feedback**: Get instant feedback on responses
+- **Authentication & Authorization**
+  - JWT-based authentication
+  - OAuth2 with GitHub
+  - Role-based access control
 
-## Tech Stack
+- **Interview Management**
+  - Create and manage interview sessions
+  - Support for different interview types and templates
+  - Real-time progress tracking
 
-- **Framework**: FastAPI
+- **AI-Powered Evaluation**
+  - Response evaluation using multiple LLM providers (OpenAI, Anthropic, Groq)
+  - Detailed feedback and scoring
+  - Support for coding challenges and technical questions
+
+- **Media Handling**
+  - File uploads (PDF, DOCX, images)
+  - Video recording and storage
+  - Document processing and text extraction
+
+- **Analytics & Reporting**
+  - Performance metrics and insights
+  - Interview history and comparisons
+  - Exportable reports
+
+## 🛠 Tech Stack
+
+- **Backend Framework**: FastAPI
 - **Database**: PostgreSQL with SQLAlchemy ORM
-- **Caching**: Redis for session management
-- **Vector Store**: ChromaDB for embeddings and semantic search
-- **LLM Integration**: ChatGroq for response evaluation
-- **Authentication**: JWT with OAuth2
-- **Containerization**: Docker
+- **Caching & Message Broker**: Redis
+- **Vector Database**: ChromaDB
+- **AI/ML**: LangChain, OpenAI, Anthropic, Groq
+- **Authentication**: JWT, OAuth2
+- **Containerization**: Docker & Docker Compose
+- **Monitoring**: Sentry, Prometheus
+- **Documentation**: OpenAPI/Swagger
 
-## Prerequisites
+## 📋 Prerequisites
 
 - Python 3.11+
+- Node.js 18+ (for development)
 - Docker and Docker Compose
-- Groq API key (for LLM functionality)
-- GitHub OAuth credentials (for GitHub login)
+- PostgreSQL 14+
+- Redis 7+
+- ChromaDB 0.4+
 
-## Setup
+## 🚀 Quick Start
+
+### Development Setup
 
 1. Clone the repository:
    ```bash
@@ -37,17 +60,117 @@ This is the backend API for the AI-Powered Excel Mock Interviewer application. I
    cd autonomous-interview-interface
    ```
 
-2. Create a `.env` file in the `apps/api` directory with the following variables:
-   ```env
-   # App
-   DEBUG=true
-   SECRET_KEY=your-secret-key
+2. Set up environment variables:
+   ```bash
+   cp apps/api/.env.example apps/api/.env
+   # Edit the .env file with your configuration
+   ```
+
+3. Start the development environment:
+   ```bash
+   # Using Docker Compose (recommended)
+   docker-compose up -d
    
-   # Database
-   DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/interviewdb
-   
-   # Redis
-   REDIS_URL=redis://redis:6379/0
+   # Or run locally
+   cd apps/api
+   python -m venv venv
+   source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+   pip install -r requirements.txt
+   uvicorn app.main:app --reload
+   ```
+
+4. Access the API documentation:
+   - Swagger UI: http://localhost:8000/docs
+   - ReDoc: http://localhost:8000/redoc
+
+### Production Deployment
+
+1. Build and start the production stack:
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d --build
+   ```
+
+2. Run database migrations:
+   ```bash
+   docker-compose -f docker-compose.prod.yml exec api alembic upgrade head
+   ```
+
+## 🔧 Configuration
+
+Copy the example environment file and update the values:
+
+```bash
+cp apps/api/.env.example apps/api/.env
+```
+
+Key configuration options:
+
+```env
+# Application
+APP_NAME="Autonomous Interview API"
+DEBUG=false
+SECRET_KEY=your-secret-key
+
+# Database
+DATABASE_URL=postgresql+asyncpg://user:password@db:5432/interviewdb
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# CORS (comma-separated list of origins)
+CORS_ORIGINS=["https://your-frontend.com"]
+
+# LLM Providers (at least one required)
+OPENAI_API_KEY=your-openai-key
+ANTHROPIC_API_KEY=your-anthropic-key
+GROQ_API_KEY=your-groq-key
+
+# Optional: Email Configuration
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=user@example.com
+SMTP_PASSWORD=your-password
+EMAIL_FROM=noreply@example.com
+```
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage
+pytest --cov=app --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_endpoints.py -v
+```
+
+## 📚 API Documentation
+
+Interactive API documentation is available at:
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- FastAPI for the amazing web framework
+- LangChain for LLM integration
+- The open-source community for invaluable tools and libraries
    
    # JWT
    JWT_SECRET=your-jwt-secret
