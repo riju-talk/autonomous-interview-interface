@@ -37,46 +37,70 @@ services:
     networks:
       - app-network
 
-  # Database
+  # Database (PostgreSQL)
   db:
     image: postgres:15-alpine
+    container_name: excel-interviewer-db-prod
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C.UTF-8 --lc-ctype=C.UTF-8
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    ports:
+      - "5432:5432"  # Expose PostgreSQL on default port 5432
     restart: always
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Redis
+  # Redis for caching and session management
   redis:
     image: redis:7-alpine
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    container_name: excel-interviewer-redis-prod
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
+    ports:
+      - "6379:6379"  # Expose Redis on default port 6379
     restart: always
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # ChromaDB
+  # ChromaDB for vector storage
   chroma:
     image: chromadb/chroma:0.4.22
-    ports:
-      - "8001:8000"
+    container_name: excel-interviewer-chroma-prod
     environment:
       - CHROMA_SERVER_AUTH_CREDENTIALS=admin:${CHROMA_ADMIN_PASSWORD}
       - CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.basic.BasicAuthServerProvider
       - CHROMA_SERVER_AUTH_CREDENTIALS_PROVIDER=chromadb.auth.basic.BasicAuthCredentialsProvider
-      - CHROMA_SERVER_AUTH_CREDENTIALS=admin:${CHROMA_ADMIN_PASSWORD}
+      - CHROMA_SERVER_HTTP_PORT=8000
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma
     volumes:
       - chroma_data:/chroma/chroma
+    ports:
+      - "8001:8000"  # Map host port 8001 to container port 8000
     restart: always
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Traefik (Reverse Proxy)
   traefik:

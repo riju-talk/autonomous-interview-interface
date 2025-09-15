@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Clock, Upload, AlertTriangle, CheckCircle, FileText, Send } from "lucide-react";
 
-
 class InterviewWindow extends Component {
   timerInterval = null;
   fileInputRef;
@@ -17,6 +16,7 @@ class InterviewWindow extends Component {
   constructor(props) {
     super(props);
     this.fileInputRef = React.createRef();
+    this._isMounted = false;
     this.state = {
       sessionId: null,
       currentQuestion: null,
@@ -33,28 +33,49 @@ class InterviewWindow extends Component {
   }
 
   async componentDidMount() {
-    await this.initializeSession();
+    this._isMounted = true;
+    try {
+      await this.initializeSession();
+    } catch (error) {
+      console.error('Error initializing session:', error);
+      if (this._isMounted) {
+        this.setState({ 
+          error: 'Failed to initialize interview. Please refresh the page.',
+          isLoading: false
+        });
+      }
+    }
   }
 
   componentWillUnmount() {
+    this._isMounted = false;
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
+      this.timerInterval = null;
     }
   }
 
   initializeSession = async () => {
+    if (!this._isMounted) return;
+    
     try {
       // In a real app, this would call your backend API
       // For now, we'll simulate the session creation
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      this.setState({ sessionId, isLoading: false });
-      await this.fetchNextQuestion();
+      if (this._isMounted) {
+        this.setState({ sessionId, isLoading: false }, async () => {
+          await this.fetchNextQuestion();
+        });
+      }
     } catch (error) {
-      this.setState({ 
-        error: "Failed to initialize interview session. Please try again.", 
-        isLoading: false 
-      });
+      console.error('Error in initializeSession:', error);
+      if (this._isMounted) {
+        this.setState({ 
+          error: "Failed to initialize interview session. Please refresh the page.", 
+          isLoading: false 
+        });
+      }
     }
   };
 
